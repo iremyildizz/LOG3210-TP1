@@ -136,7 +136,8 @@ TOKEN :
 	< #LETTER: ["a"-"z","A"-"Z","_"] > |
 	< #DIGIT: ["0"-"9"] > |
 	< INTEGER: ["1"-"9"] (["0"-"9"])* | "0" > |
-	< REAL: (<INTEGER>) > //TODO
+	< REAL: (<INTEGER>)? (".") (<INTEGER>)? (<EXPONENT>)? > |
+	< EXPONENT: (["e","E"]) (["+","-"])? <INTEGER> >
 }
 
 
@@ -159,7 +160,74 @@ void Block() #void : { }
 
 void Stmt() #void : { }
 {
+    IfStmt() |
+    WhileStmt() |
+    DoWhileStmt() |
+    ForStmt() |
+    FunctionStmt() |
 	AssignStmt() <SEMICOLON>
+}
+
+void FunctionStmt() : { }
+{
+    <FUNC> Identifier() <LPAREN> ((Identifier() (<COMMA> Identifier())*) | (<SEMICOLON> <SEMICOLON>) )? <RPAREN> FunctionBlock()
+}
+
+void FunctionBlock() #void : { }
+{
+    <LACC> Block() (ReturnStmt())? <RACC> | Stmt()
+}
+
+void ReturnStmt() : { }
+{
+    <RET> (Expr())? <SEMICOLON>
+}
+
+void ForStmt() : { }
+{
+    <FOR> <LPAREN> (AssignStmt())? <SEMICOLON> (Expr())? <SEMICOLON> (AssignStmt())? <RPAREN> FunctionBlock()
+}
+
+void DoWhileStmt() : { }
+{
+    <DO> WhileBlock() <WHILE> <LPAREN> WhileCond() <RPAREN> <SEMICOLON>
+}
+
+void WhileStmt() : { }
+{
+    <WHILE> <LPAREN> WhileCond() <RPAREN> WhileBlock()
+}
+
+void WhileCond() : { }
+{
+    Expr()
+}
+
+void WhileBlock() : { }
+{
+    FunctionBlock()
+}
+
+void IfStmt() : { }
+{
+    <IF> <LPAREN> IfCond() <RPAREN> IfBlock() (LOOKAHEAD(2) ElseBlock())?
+}
+
+void ElseBlock() : { }
+{
+    <ELSE>
+    (LOOKAHEAD(2) IfStmt() |
+    FunctionBlock())
+}
+
+void IfCond() : { }
+{
+    Expr()
+}
+
+void IfBlock() : { }
+{
+    FunctionBlock()
 }
 
 void AssignStmt() : { Token t;}
@@ -170,14 +238,53 @@ void AssignStmt() : { Token t;}
 
 void Expr() #void : {}
 {
-    BasicExpr()
+    (AndOrExpr() (<LOGIC> AndOrExpr())*) #Logic(>1)
+}
+
+void AndOrExpr() #void : {}
+{
+    (ComparisonExpr() (LOOKAHEAD(2) <LOGIC> ComparisonExpr())*) #Logic(>1)
+}
+
+void ComparisonExpr() #void : {}
+{
+    (AddExpr() (<COMPARE> AddExpr())*) #Compare(>1)
+}
+
+void AddExpr() #void : {}
+{
+    (MulExpr() ((<PLUS>|<MINUS>) MulExpr())*)  #Addition(>1)
+}
+
+void MulExpr() #void : {}
+{
+    (NegationExpr() ((<FOIS> |<DIV>) NegationExpr())*)  #Multi(>1)
+}
+
+void NegationExpr() #void : {}
+{
+    <MINUS> NegationExpr() #Minus | NotExpr()
+}
+
+void NotExpr() #void : {}
+{
+    <NOT> NotExpr() #Not | BasicExpr()
+}
+
+void ParenExpr() #void : {}
+{
+    <LPAREN> Expr() <RPAREN>
 }
 
 void BasicExpr() #void : {}
 {
-	LOOKAHEAD(2) Identifier() |
-	IntValue()
+    LOOKAHEAD(2) Identifier() |
+    IntValue() |
+    RealValue() |
+    ParenExpr()
 }
+
+
 
 
 
